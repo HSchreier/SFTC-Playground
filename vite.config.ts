@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/SFTC-Playground/' // Replace with your repository name
+  base: './' // Important for GitHub Pages
 })
