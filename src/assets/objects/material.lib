@@ -1,0 +1,17 @@
+# Aspose.3D Wavefront OBJ Exporter
+# Copyright 2004-2025 Aspose Pty Ltd.
+# File created: 05/21/2025 20:08:27
+
+newmtl Klingon_Bird_of_Prey_diffuse
+	Ka 0.2 0.2 0.2
+	Kd 1 1 1
+	Ke 0 0 0
+	illum 2
+	Ks 0 0 0
+	Ns 6
+	d 1
+	Tr 0
+	map_Kd Klingon_Bird_of_Prey_windows.png
+	map_Ks Klingon_Bird_of_Prey_specular.png
+	map_Ke Klingon_Bird_of_Prey_windows.png
+	norm Klingon_Bird_of_Prey_normal.png
