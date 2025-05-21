@@ -3,11 +3,10 @@
   "module": "src/main.tsx",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "deploy": "tsc -b && vite build && rsync -avz --delete ./dist/ produck@www652.your-server.de:/public_html",
-    "lint": "eslint .",
-    "preview": "vite preview"
+      "dev": "vite",
+      "predeploy": "bun run build",
+      "deploy": "gh-pages -d dist",
+      "build": "tsc -b && vite build"
   },
   "dependencies": {
     "@emotion/react": "^11.11.4",
