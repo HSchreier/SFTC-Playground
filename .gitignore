@@ -16,7 +16,6 @@ bun.lockb
 .env.local
 
 # Vite
-dist
 .vite
 
 # Logs
