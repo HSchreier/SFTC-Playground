@@ -156,3 +156,5 @@ dist
 .client/dist/*.*
 client/dist/*
 client/dist/
+
+.DS_Store
