@@ -34,3 +34,6 @@ This project reflects the majesty of Star Trek vessels that we command in STFC, 
 1. Clone the repository:
    ```bash
    git clone https://github.com/YOUR_USERNAME/YOUR_REPO.gitx
+
+### TODOS
+apply app design & encapsulation
