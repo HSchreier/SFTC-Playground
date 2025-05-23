@@ -51,7 +51,7 @@ export default function OceanScene() {
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 2000);
-    camera.position.set(8, 5, 8);
+    camera.position.set(-7.43, 1.24, 4.61);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -94,7 +94,7 @@ export default function OceanScene() {
     scene.add(new THREE.AmbientLight(0x404040, 0.5));
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 2, 0);
+    controls.target.set(0, 2.5, 0);
     controls.enableDamping = true;
     controlsRef.current = controls;
 
@@ -141,7 +141,7 @@ export default function OceanScene() {
 
     manager.add((delta, elapsed) => {
       stats.begin();
-      (water.material.uniforms as any).time.value += delta * 0.5;
+      (water.material.uniforms as any).time.value += delta * 0.25;
       if (shipRef.current) {
         shipRef.current.position.y = -0.5 + Math.sin(elapsed) * 0.1;
         shipRef.current.rotation.z = Math.sin(elapsed * 0.7) * 0.03;

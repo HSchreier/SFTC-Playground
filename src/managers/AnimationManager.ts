@@ -71,8 +71,8 @@ export function playShipApproachSequence(
         // Fully fade in over 3s with easeInOutSine
         gsap.to(material, {
           opacity: 1.0,
-          duration: 3,
-          ease: 'sine.inOut',
+          duration: 2,
+          ease: 'power1.out',
           onComplete: () => {
             // Ensure full visibility
             material.transparent = false;
@@ -154,7 +154,7 @@ export class AnimationManager {
       z: this.targetShipPosition.z,
       duration: 3,
       ease: 'sine.out',
-      onComplete: () => {
+      onStart: () => {
         this.revealBirdOfPrey();
       }
     });
@@ -166,15 +166,18 @@ export class AnimationManager {
     const mesh = this.birdOfPrey;
     mesh.visible = true;
 
-    // Animate material opacity if transparent
     mesh.traverse((child) => {
-      if (child instanceof THREE.Mesh && (child.material as THREE.Material).transparent) {
-        const material = child.material as THREE.MeshStandardMaterial;
-        material.opacity = 0;
-        gsap.to(material, {
+      if ((child as THREE.Mesh).isMesh) {
+        const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        mat.transparent = true;
+        mat.opacity = 0;
+        gsap.to(mat, {
           opacity: 1,
-          duration: 1.5,
-          ease: 'sine.inOut',
+          duration: 5,
+          ease: 'power1.out',
+          onComplete: () => {
+            mat.transparent = false;
+          }
         });
       }
     });
