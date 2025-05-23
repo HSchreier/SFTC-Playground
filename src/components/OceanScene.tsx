@@ -50,8 +50,28 @@ export default function OceanScene() {
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
+    const adjustCameraForScreen = () => {
+      const aspectRatio = window.innerWidth / window.innerHeight;
+      const isPortrait = aspectRatio < 1;
+      const isMobile = window.innerWidth <= 768;
+
+      if (isMobile && isPortrait) {
+        // Mobile Portrait – most zoomed out
+        camera.position.set(12, 8, 14);
+      } else if (isMobile && !isPortrait) {
+        // Mobile Landscape – moderate zoom out
+        camera.position.set(10, 6, 12);
+      } else {
+        // Desktop or tablet landscape – default cinematic
+        camera.position.set(8, 5, 8);
+      }
+
+      camera.lookAt(0, 2, 0); // Always look at scene center
+    };
+
+
     const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 2000);
-    camera.position.set(-7.43, 1.24, 4.61);
+    adjustCameraForScreen();
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -168,7 +188,18 @@ export default function OceanScene() {
       }
     };
   }, []);
+  const [cameraInfo, setCameraInfo] = useState({ x: 0, y: 0, z: 0 });
 
+  useEffect(() => {
+    const updateInfo = () => {
+      if (controlsRef.current) {
+        const pos = controlsRef.current.object.position;
+        setCameraInfo({ x: pos.x, y: pos.y, z: pos.z });
+      }
+      requestAnimationFrame(updateInfo);
+    };
+    updateInfo();
+  }, []);
   return (
     <div ref={mountRef} style={{ width: '100%', height: '100%' }}>
       {loading && (
@@ -185,6 +216,24 @@ export default function OceanScene() {
           <div>Loading model... {Math.round(progress)}%</div>
         </div>
       )}
+      <div style={{
+             position: 'absolute',
+             bottom: '10px',
+             left: '10px',
+             backgroundColor: 'rgba(0, 0, 0, 0.6)',
+             color: 'lime',
+             fontFamily: 'monospace',
+             padding: '8px',
+             borderRadius: '4px',
+             fontSize: '12px',
+             zIndex: 1
+           }}>
+             camera.position.set(
+               {cameraInfo.x.toFixed(2)},
+               {cameraInfo.y.toFixed(2)},
+               {cameraInfo.z.toFixed(2)}
+             )
+           </div>
     </div>
   );
 }
