@@ -1,177 +1,299 @@
 // components/OceanScene.tsx
-import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Water } from 'three/examples/jsm/objects/Water.js';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-import { AnimationManager } from '../managers/AnimationManager';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import Stats from 'three/examples/jsm/libs/stats.module.js';
+
+// Import Minecraft font (you'll need to add this to your project)
+// You can download Minecraft PE font from: https://www.dafont.com/minecraft.font
+// Then add it to your public/fonts folder
+const MINECRAFT_FONT_URL = '/fonts/minecraft.ttf';
 
 export default function OceanScene() {
   const mountRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
-
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const controlsRef = useRef<OrbitControls | null>(null);
+  const [cameraInfo, setCameraInfo] = useState({ x: 0, y: 0, z: 0 });
+  const [textOpacity, setTextOpacity] = useState(0);
   const shipRef = useRef<THREE.Group | null>(null);
-  const birdOfPreyRef = useRef<THREE.Group | null>(null);
-  const animationManagerRef = useRef<AnimationManager | null>(null);
+  const animationRef = useRef<{
+    frameId: number;
+    startTime: number | null;
+  }>({ frameId: 0, startTime: null });
+
+  const CONFIG = {
+    cameraPosition: new THREE.Vector3(-13.81, 1.33, 26.67),
+    waterSize: 100,
+    shipScale: 15,
+    islandScale: 30,
+    islandPosition: new THREE.Vector3(0, 3, -40),
+    waterColor: 0x001e0f,
+    sunPositionSpherical: [1, 88, 180],
+    shipSpeed: 0.05, // Speed of the ship movement
+    shipRockingSpeed: 0.002, // Speed of rocking animation
+    shipRockingAmount: 0.2, // Amount of rocking motion
+    shipStopDistance: 15, // Distance from camera where ship starts slowing
+    shipMinSpeed: 0.001, // Minimum speed when slowing down
+    textFadeInDuration: 3000, // 3 seconds fade in
+  };
 
   const assetPaths = {
     waterNormal: new URL('../assets/textures/waternormals.jpg', import.meta.url).href,
-    birdOfPrey: new URL('../assets/objects/BirdOfPrey_ENT.obj', import.meta.url).href,
-    shipModel: new URL('../assets/objects/untitled1.obj', import.meta.url).href
+    shipModel: new URL('../assets/objects/ship-model.obj', import.meta.url).href,
+    shipTexture: new URL('../assets/textures/solar_punk_pirate_shi_0617201936_texture.png', import.meta.url).href,
+    islandModel: new URL('../assets/objects/medas.obj', import.meta.url).href,
+    islandTexture: new URL('../assets/textures/medas_texture.png', import.meta.url).href
   };
 
-  const materials = {
-    klingon: new THREE.MeshStandardMaterial({
-      color: 0x448844,
-      metalness: 0.6,
-      roughness: 0.4,
-      emissive: 0x113311,
-      emissiveIntensity: 0.3,
-      transparent: true,
-      opacity: 0,
-    }),
-    ship: new THREE.MeshStandardMaterial({
-      color: 0x888888,
-      metalness: 0.3,
-      roughness: 0.7
-    })
-  };
+  const TEXT_CONTENT = [
+    "Els pirates electrònics",
+    "desembarquen",
+    "SALA mariscal",
+    "28/08/2025"
+  ];
+
+  const [shipPosition, setShipPosition] = useState({ x: 0, y: 0, z: 0 });
+  const shipSpeedRef = useRef(CONFIG.shipSpeed); // Mutable speed reference
 
   useEffect(() => {
+    // Load Minecraft font for the overlay
+    const fontFace = new FontFace('Minecraft', `url(${MINECRAFT_FONT_URL})`);
+    document.fonts.add(fontFace);
+    fontFace.load().then(() => {
+      // Font loaded, we can start fading in the text
+      const startTime = Date.now();
+
+      const fadeIn = () => {
+        const elapsed = Date.now() - startTime;
+        const opacity = Math.min(elapsed / CONFIG.textFadeInDuration, 1);
+        setTextOpacity(opacity);
+
+        if (opacity < 1) {
+          requestAnimationFrame(fadeIn);
+        }
+      };
+
+      fadeIn();
+    }).catch(err => {
+      console.error('Failed to load Minecraft font:', err);
+      // Fallback: show text immediately
+      setTextOpacity(1);
+    });
+
+    let water: Water;
+    let renderer: THREE.WebGLRenderer;
+    let scene: THREE.Scene;
+    let camera: THREE.PerspectiveCamera;
+    let controls: OrbitControls;
+
     if (!mountRef.current) return;
-
     const container = mountRef.current;
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
 
-    const adjustCameraForScreen = () => {
-      const aspectRatio = window.innerWidth / window.innerHeight;
-      const isPortrait = aspectRatio < 1;
-      const isMobile = window.innerWidth <= 768;
+    // THREE: Scene setup
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera.position.copy(CONFIG.cameraPosition);
+    camera.lookAt(0, 0, 0);
 
-      if (isMobile && isPortrait) {
-        // Mobile Portrait – most zoomed out
-        camera.position.set(12, 8, 14);
-      } else if (isMobile && !isPortrait) {
-        // Mobile Landscape – moderate zoom out
-        camera.position.set(10, 6, 12);
-      } else {
-        // Desktop or tablet landscape – default cinematic
-        camera.position.set(8, 5, 8);
-      }
-
-      camera.lookAt(0, 2, 0); // Always look at scene center
-    };
-
-
-    const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 2000);
-    adjustCameraForScreen();
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
+    (renderer as any).outputEncoding = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
 
+    // Lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight.position.set(0, 50, 100);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    // OrbitControls
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0.5, 0);
+    controls.update();
+
+    // Stats
     const stats = new Stats();
     container.appendChild(stats.dom);
 
-    const water = new Water(new THREE.PlaneGeometry(100, 100), {
-      textureWidth: 256,
-      textureHeight: 256,
-      waterNormals: new THREE.TextureLoader().load(assetPaths.waterNormal, t => {
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      }),
-      sunDirection: new THREE.Vector3(),
-      sunColor: 0xffffff,
-      waterColor: 0x001e0f,
-      distortionScale: 2.5,
-    });
-    water.rotation.x = -Math.PI / 2;
-    scene.add(water);
-
+    // Sky
     const sky = new Sky();
     sky.scale.setScalar(100);
     scene.add(sky);
 
     const sun = new THREE.Vector3();
-    const sunHelper = new THREE.Mesh(
-      new THREE.SphereGeometry(0.1, 16, 16),
-      new THREE.MeshBasicMaterial({ color: 0xffff00 })
+    sun.setFromSphericalCoords(
+      CONFIG.sunPositionSpherical[0],
+      THREE.MathUtils.degToRad(CONFIG.sunPositionSpherical[1]),
+      THREE.MathUtils.degToRad(CONFIG.sunPositionSpherical[2])
     );
-    sunHelper.position.copy(sun);
-    scene.add(sunHelper);
-
-    sun.setFromSphericalCoords(1, THREE.MathUtils.degToRad(88), THREE.MathUtils.degToRad(180));
     (sky.material.uniforms as any).sunPosition.value.copy(sun);
-    (water.material.uniforms as any).sunDirection.value.copy(sun).normalize();
-    scene.add(new THREE.AmbientLight(0x404040, 0.5));
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 2.5, 0);
-    controls.enableDamping = true;
-    controlsRef.current = controls;
+    // Water
+    const waterGeometry = new THREE.PlaneGeometry(CONFIG.waterSize, CONFIG.waterSize);
+    water = new Water(waterGeometry, {
+      textureWidth: 256,
+      textureHeight: 256,
+      waterNormals: new THREE.TextureLoader().load(assetPaths.waterNormal, t => {
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      }),
+      sunDirection: sun.clone().normalize(),
+      sunColor: 0xffffff,
+      waterColor: CONFIG.waterColor,
+      distortionScale: 2.5,
+      fog: scene.fog !== undefined
+    });
+    water.rotation.x = -Math.PI / 2;
+    scene.add(water);
 
-    const manager = new AnimationManager();
-    animationManagerRef.current = manager;
-
-    const objLoader = new OBJLoader(new THREE.LoadingManager(
-      () => {
-        setLoading(false);
-        // All models loaded, start cinematic
-        if (shipRef.current) manager.setShip(shipRef.current);
-        if (birdOfPreyRef.current) manager.setBirdOfPrey(birdOfPreyRef.current);
-        manager.playCloakReveal();
-      },
+    // Loaders
+    const textureLoader = new THREE.TextureLoader();
+    const loadingManager = new THREE.LoadingManager(
+      () => setLoading(false),
       (_, loaded, total) => setProgress((loaded / total) * 100)
-    ));
+    );
+    const objLoader = new OBJLoader(loadingManager);
 
-    const loadModel = (
-      url: string, material: THREE.Material, position: THREE.Vector3,
-      rotation: number, scaleFactor: number, ref: React.MutableRefObject<THREE.Group | null>
-    ) => {
-      objLoader.load(url, (obj) => {
-        obj.position.copy(position);
-        obj.rotation.y = rotation;
+    // Load Island
+    textureLoader.load(assetPaths.islandTexture, (islandTexture) => {
+      islandTexture.colorSpace = THREE.SRGBColorSpace;
+      islandTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      const islandMaterial = new THREE.MeshStandardMaterial({
+        map: islandTexture,
+        metalness: 0.1,
+        roughness: 0.8,
+      });
+
+      objLoader.load(assetPaths.islandModel, (obj) => {
         const box = new THREE.Box3().setFromObject(obj);
-        const size = box.getSize(new THREE.Vector3());
-        const scale = scaleFactor / size.z;
-        obj.scale.set(scale, scale, scale);
-        obj.traverse((child: THREE.Object3D) => {
-          if (child instanceof THREE.Mesh) {
-            child.material = material;
+        const center = box.getCenter(new THREE.Vector3());
+        obj.position.sub(center);
+        obj.scale.setScalar(CONFIG.islandScale);
+        obj.position.copy(CONFIG.islandPosition);
+
+        obj.traverse(child => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            mesh.material = islandMaterial;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
           }
         });
-        ref.current = obj;
+
         scene.add(obj);
       });
+    });
+
+    // Load Ship
+    textureLoader.load(assetPaths.shipTexture, (shipTexture) => {
+      shipTexture.colorSpace = THREE.SRGBColorSpace;
+      shipTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      const shipMaterial = new THREE.MeshStandardMaterial({
+        map: shipTexture,
+        metalness: 0.3,
+        roughness: 0.7,
+      });
+
+      objLoader.load(assetPaths.shipModel, (obj) => {
+        const box = new THREE.Box3().setFromObject(obj);
+        const center = box.getCenter(new THREE.Vector3());
+        obj.position.sub(center);
+        const scale = CONFIG.shipScale / Math.max(box.getSize(new THREE.Vector3()).length(), 1);
+        obj.scale.setScalar(scale);
+
+        const bottomY = box.min.y * scale;
+        obj.position.set(0, -bottomY, 0);
+        obj.rotation.y = THREE.MathUtils.degToRad(-290); // Rotate 85° clockwise
+
+        obj.traverse(child => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            mesh.material = shipMaterial;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+          }
+        });
+
+        scene.add(obj);
+        shipRef.current = obj; // Store ship reference for animation
+
+        setShipPosition({
+          x: obj.position.x,
+          y: obj.position.y,
+          z: obj.position.z
+        });
+      });
+    });
+
+    // Animation
+    const animate = (timestamp: number) => {
+      if (!animationRef.current.startTime) {
+        animationRef.current.startTime = timestamp;
+      }
+
+      stats.update();
+      controls.update();
+
+      // Animate water
+      if (water) {
+        (water.material.uniforms as any).time.value += 1.0 / 60.0;
+      }
+
+      // Move ship forward
+      if (shipRef.current) {
+        // Calculate distance to camera's initial Z position
+        const distanceToCamera = CONFIG.cameraPosition.z - shipRef.current.position.z;
+
+        // If ship is approaching the camera's view, slow down
+        if (distanceToCamera < CONFIG.shipStopDistance) {
+          // Gradually reduce speed (smooth deceleration)
+          shipSpeedRef.current = Math.max(
+            CONFIG.shipMinSpeed,
+            shipSpeedRef.current * 0.98
+          );
+
+          // Stop completely when very close
+          if (distanceToCamera < 5) {
+            shipSpeedRef.current = 0;
+          }
+        }
+
+        // Apply movement with current speed
+        shipRef.current.position.z += shipSpeedRef.current;
+
+        // Rocking motion (reduced when slowing down)
+        const rockingIntensity = shipSpeedRef.current > 0.01 ? 1 :
+                               (shipSpeedRef.current / 0.01);
+
+        const rocking = Math.sin(timestamp * CONFIG.shipRockingSpeed) * rockingIntensity;
+        shipRef.current.rotation.z = rocking * 0.08;
+        shipRef.current.rotation.x = Math.sin(timestamp * CONFIG.shipRockingSpeed * 0.7) * 0.03 * rockingIntensity;
+        shipRef.current.position.y = -0.5 + rocking * CONFIG.shipRockingAmount;
+        shipRef.current.position.y += Math.sin(timestamp * 0.0015) * 0.15 * rockingIntensity;
+
+        // Update ship position state
+        setShipPosition({
+          x: shipRef.current.position.x,
+          y: shipRef.current.position.y,
+          z: shipRef.current.position.z
+        });
+      }
+
+      renderer.render(scene, camera);
+
+      const pos = camera.position;
+      setCameraInfo({ x: pos.x, y: pos.y, z: pos.z });
+
+      animationRef.current.frameId = requestAnimationFrame(animate);
     };
 
-    const targetPosition = new THREE.Vector3(0, -0.5, -10);
-    const startPosition = targetPosition.clone().add(new THREE.Vector3(0, 0, -20));
+    animationRef.current.frameId = requestAnimationFrame(animate);
 
-    loadModel(assetPaths.shipModel, materials.ship, startPosition, Math.PI / 10, 4, shipRef);
-    loadModel(assetPaths.birdOfPrey, materials.klingon, new THREE.Vector3(0, 3.5, 0), Math.PI / 35, 8, birdOfPreyRef);
-
-    manager.add((delta, elapsed) => {
-      stats.begin();
-      (water.material.uniforms as any).time.value += delta * 0.25;
-      if (shipRef.current) {
-        shipRef.current.position.y = -0.5 + Math.sin(elapsed) * 0.1;
-        shipRef.current.rotation.z = Math.sin(elapsed * 0.7) * 0.03;
-      }
-      controls.update();
-      renderer.render(scene, camera);
-      stats.end();
-    });
-    manager.start();
-
+    // Resize handling
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -179,46 +301,54 @@ export default function OceanScene() {
     };
     window.addEventListener('resize', handleResize);
 
+    // Cleanup
     return () => {
-      manager.dispose();
       window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationRef.current.frameId);
       renderer.dispose();
       if (mountRef.current?.contains(renderer.domElement)) {
         mountRef.current.removeChild(renderer.domElement);
       }
     };
   }, []);
-  const [cameraInfo, setCameraInfo] = useState({ x: 0, y: 0, z: 0 });
 
-  useEffect(() => {
-    const updateInfo = () => {
-      if (controlsRef.current) {
-        const pos = controlsRef.current.object.position;
-        setCameraInfo({ x: pos.x, y: pos.y, z: pos.z });
-      }
-      requestAnimationFrame(updateInfo);
-    };
-    updateInfo();
-  }, []);
   return (
-    <div ref={mountRef} style={{ width: '100%', height: '100%' }}>
+    <div ref={mountRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
       {loading && (
         <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
+          position: 'absolute', top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
-          color: 'white',
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          padding: '20px',
-          borderRadius: '5px'
+          background: 'rgba(0,0,0,0.7)', padding: 20, color: 'white',
+          borderRadius: 8
         }}>
-          <div>Loading model... {Math.round(progress)}%</div>
+          Loading... {Math.round(progress)}%
         </div>
       )}
+
+      {/* Minecraft-style text overlay */}
+      <div style={{
+        position: 'absolute',
+        top: '60px',
+        left: '20px',
+        fontFamily: 'Minecraft, monospace',
+        color: '#FFFFFF',
+        textShadow: '2px 2px 0 #3F3F3F',
+        fontSize: '24px',
+        lineHeight: '1.5',
+        opacity: textOpacity,
+        transition: 'opacity 0.5s ease',
+        pointerEvents: 'none',
+        background: 'none'
+      }}>
+        {TEXT_CONTENT.map((line, index) => (
+          <div key={index}>{line}</div>
+        ))}
+      </div>
+
+      {/* Camera position debug info */}
       <div style={{
              position: 'absolute',
-             bottom: '10px',
+             bottom: '50px', // Moved up to make room for ship position
              left: '10px',
              backgroundColor: 'rgba(0, 0, 0, 0.6)',
              color: 'lime',
@@ -233,6 +363,21 @@ export default function OceanScene() {
                {cameraInfo.y.toFixed(2)},
                {cameraInfo.z.toFixed(2)}
              )
+           </div>
+
+           <div style={{
+             position: 'absolute',
+             bottom: '10px',
+             left: '10px',
+             backgroundColor: 'rgba(0, 0, 0, 0.6)',
+             color: 'cyan',
+             fontFamily: 'monospace',
+             padding: '8px',
+             borderRadius: '4px',
+             fontSize: '12px',
+             zIndex: 1
+           }}>
+             ship.position: z={shipPosition.z.toFixed(2)}, speed={shipSpeedRef.current.toFixed(4)}
            </div>
     </div>
   );

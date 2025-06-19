@@ -1,5 +1,5 @@
 {
-  "name": "STFC Playground",
+  "name": "techno-pirates",
   "module": "src/main.tsx",
   "type": "module",
   "scripts": {
