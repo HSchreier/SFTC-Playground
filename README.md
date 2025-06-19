@@ -52,3 +52,26 @@ bun run dev
 
 # Build for production
 bun run build
+```
+
+### 🧙‍♂️ Where the Magic Happens
+
+The core visualization lives in `components/OceanScene.tsx`, featuring:
+
+```typescript
+// CONFIGURATION PARAMETERS
+const CONFIG = {
+  cameraPosition: new THREE.Vector3(-13.81, 1.33, 26.67), // Starting camera
+  waterSize: 100,                // Ocean plane dimensions
+  shipSpeed: 0.05,               // Base movement velocity
+  shipStopDistance: 15,          // Deceleration trigger distance
+  shipRockingSpeed: 0.002,       // Wave animation frequency
+  sunPositionSpherical: [1, 88, 180] // [intensity, azimuth, altitude]
+};
+
+// KEY SYSTEMS:
+// - Water shader with normal maps
+// - Ship movement physics
+// - Camera tracking
+// - Asset loading manager
+// - Debug HUD rendering
