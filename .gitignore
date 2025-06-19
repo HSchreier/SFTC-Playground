@@ -154,3 +154,10 @@ out
 
 
 .DS_Store
+.lock
+tsconfig.json
+vite.config.ts
+.gitignore
+.gitattributes
+
+dist/*
