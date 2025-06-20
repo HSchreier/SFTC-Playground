@@ -10,7 +10,7 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 // Import Minecraft font (you'll need to add this to your project)
 // You can download Minecraft PE font from: https://www.dafont.com/minecraft.font
 // Then add it to your public/fonts folder
-const MINECRAFT_FONT_URL = '/fonts/minecraft.ttf';
+const MINECRAFT_FONT_URL = 'fonts/minecraft.ttf';
 
 export default function OceanScene() {
   const mountRef = useRef<HTMLDivElement>(null);

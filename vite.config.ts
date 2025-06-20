@@ -14,13 +14,18 @@ export default defineConfig({
         {
           src: 'src/assets/textures/*.{jpg,png}',
           dest: 'assets/textures'
+        },
+        {
+          src: 'src/fonts/*.{ttf,woff,woff2}',
+          dest: 'assets/fonts'
         }
       ]
     })
   ],
-  base: './',
+  base: '/elspirates-mariscal2015/', // Crucial for GitHub Pages
   build: {
     outDir: 'dist',
+    assetsInlineLimit: 0, // Ensure fonts aren't inlined
     rollupOptions: {
       output: {
         assetFileNames: (assetInfo) => {
@@ -29,12 +34,15 @@ export default defineConfig({
             obj: 'models',
             mtl: 'models',
             jpg: 'textures',
-            png: 'textures'
+            png: 'textures',
+            ttf: 'fonts',
+            woff: 'fonts',
+            woff2: 'fonts'
           };
-          return `assets/${folderMap[extType] || extType}/[name]-[hash][extname]`;
+          return `assets/${folderMap[extType] || extType}/[name][extname]`; // Removed hash for stability
         }
       }
     }
   },
-  assetsInclude: ['**/*.obj', '**/*.mtl'] // This is valid in Vite 3+
+  assetsInclude: ['**/*.obj', '**/*.mtl', '**/*.ttf', '**/*.woff', '**/*.woff2']
 });
